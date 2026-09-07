@@ -1,0 +1,53 @@
+import bcrypt from 'bcryptjs';
+import { prisma } from '../db.js';
+import { sign } from '../middleware/auth.js';
+import { HttpError } from './errors.js';
+
+export interface RegisterInput {
+  email: string;
+  password: string;
+  name: string;
+  role?: 'admin' | 'agent' | 'customer';
+}
+
+interface StoredUser {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+}
+
+function issueToken(user: StoredUser) {
+  const token = sign({ id: user.id, email: user.email, role: user.role, name: user.name });
+  return { token, user: { id: user.id, email: user.email, name: user.name, role: user.role } };
+}
+
+export const authService = {
+  async register(input: RegisterInput) {
+    const exists = await prisma.user.findUnique({ where: { email: input.email } });
+    if (exists) throw new HttpError(409, 'Email taken');
+    const user = await prisma.user.create({
+      data: {
+        email: input.email,
+        name: input.name,
+        role: input.role || 'customer',
+        passwordHash: await bcrypt.hash(input.password, 10),
+      },
+    });
+    return issueToken(user);
+  },
+
+  async login(email: string, password: string) {
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user || !(await bcrypt.compare(password, user.passwordHash)))
+      throw new HttpError(401, 'Invalid credentials');
+    return issueToken(user);
+  },
+
+  async me(userId: string) {
+    return prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, name: true, role: true },
+    });
+  },
+};

@@ -1,0 +1,64 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  // SQLite for zero-config local dev on Intel 16GB.
+  // For prod/portfolio: switch to provider="postgresql" + DATABASE_URL.
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         String   @default("customer") // admin | agent | customer
+  createdAt    DateTime @default(now())
+  tickets      Ticket[] @relation("CreatedTickets")
+  assigned     Ticket[] @relation("AssignedTickets")
+  comments     Comment[]
+}
+
+model Ticket {
+  id          String    @id @default(cuid())
+  title       String
+  body        String
+  status      String    @default("open") // open | pending | resolved | closed
+  priority    String    @default("medium") // critical | high | medium | low
+  category    String    @default("general") // billing | technical | account | feature_request | general
+  confidence  Float? // AI confidence 0-1
+  needsReview Boolean   @default(false)
+  summary     String?
+  slaDueAt    DateTime?
+  createdById String
+  createdBy   User      @relation("CreatedTickets", fields: [createdById], references: [id])
+  assigneeId  String?
+  assignee    User?     @relation("AssignedTickets", fields: [assigneeId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  comments    Comment[]
+  audits      AuditLog[]
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  body      String
+  internal  Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  actor     String // user email or "ai:ollama"
+  action    String // created | classified | status_changed | assigned | ...
+  detail    String?
+  createdAt DateTime @default(now())
+}
