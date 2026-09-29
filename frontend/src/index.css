@@ -77,12 +77,123 @@ button.secondary {
   margin-right: 6px;
   white-space: nowrap;
 }
-nav {
+.topnav {
+  position: sticky;
+  top: 0;
+  z-index: 40;
   display: flex;
-  gap: 12px;
-  padding: 12px 20px;
-  background: #111;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 20px;
+  background: rgba(17, 20, 26, 0.92);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   color: #fff;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: #fff;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin-right: 8px;
+}
+.brand-mark {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #6ea8fe, #a78bfa);
+  font-size: 1rem;
+}
+.nav-links {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex: 1;
+}
+.nav-link {
+  color: rgba(255, 255, 255, 0.72);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  padding: 7px 12px;
+  border-radius: 8px;
+  transition:
+    background 0.12s ease,
+    color 0.12s ease;
+}
+.nav-link:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+.nav-link.active {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.14);
+}
+.nav-cta {
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.nav-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 4px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  font-size: 0.82rem;
+}
+.avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #34d399, #6ea8fe);
+  font-weight: 700;
+  font-size: 0.68rem;
+  color: #0b0e13;
+}
+.nav-username {
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.role-badge {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+}
+.role-admin {
+  background: #7c3aed;
+}
+.role-agent {
+  background: #0369a1;
+}
+.role-customer {
+  background: rgba(255, 255, 255, 0.18);
+}
+.logout-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #fff;
+  padding: 7px 12px;
+  font-size: 0.85rem;
+}
+.logout-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 nav a {
   color: #fff;
@@ -731,6 +842,19 @@ nav a {
 [data-theme='dark'] .empty-icon {
   background: #2c3440;
   color: var(--text);
+}
+
+@media (max-width: 760px) {
+  .nav-username,
+  .brand-name {
+    display: none;
+  }
+  .nav-links {
+    gap: 0;
+  }
+  .nav-link {
+    padding: 7px 8px;
+  }
 }
 
 @media (max-width: 900px) {
