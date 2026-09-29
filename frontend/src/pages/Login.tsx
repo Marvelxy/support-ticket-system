@@ -1,27 +1,29 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { api } from '../lib/api';
+import { useAuth } from '../lib/auth';
 
 export default function Login() {
+  const { login, register } = useAuth();
   const [email, setEmail] = useState('admin@demo.io');
   const [password, setPassword] = useState('password123');
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [name, setName] = useState('Demo');
   const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
   const nav = useNavigate();
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setErr('');
+    setBusy(true);
     try {
-      const data = await api<{ token: string }>(`/api/auth/${mode}`, {
-        method: 'POST',
-        body: JSON.stringify(mode === 'login' ? { email, password } : { email, password, name }),
-      });
-      localStorage.setItem('token', data.token);
+      if (mode === 'login') await login(email, password);
+      else await register(email, password, name);
       nav('/');
     } catch (e) {
       setErr((e as Error).message);
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -41,7 +43,9 @@ export default function Login() {
             onChange={(e) => setPassword(e.target.value)}
           />
           {err && <p style={{ color: 'red' }}>{err}</p>}
-          <button type="submit">{mode === 'login' ? 'Login' : 'Create account'}</button>
+          <button type="submit" disabled={busy}>
+            {busy ? 'Please wait…' : mode === 'login' ? 'Login' : 'Create account'}
+          </button>
         </form>
         <p>
           <button
