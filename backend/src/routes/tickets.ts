@@ -4,6 +4,7 @@ import { auth, requireRole } from '../middleware/auth.js';
 import { ah } from '../middleware/asyncHandler.js';
 import { ticketService } from '../services/tickets.js';
 import type { TicketListQuery } from '../services/tickets.js';
+import { emit } from '../realtime.js';
 
 const router = Router();
 router.use(auth);
@@ -15,9 +16,7 @@ const createSchema = z.object({
 });
 
 const reviewSchema = z.object({
-  category: z
-    .enum(['billing', 'technical', 'account', 'feature_request', 'general'])
-    .optional(),
+  category: z.enum(['billing', 'technical', 'account', 'feature_request', 'general']).optional(),
   priority: z.enum(['critical', 'high', 'medium', 'low']).optional(),
 });
 
@@ -40,7 +39,9 @@ router.post(
   ah(async (req, res) => {
     const parsed = createSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
-    res.status(201).json(await ticketService.create(req.user!, parsed.data));
+    const ticket = await ticketService.create(req.user!, parsed.data);
+    emit('ticket:created', { id: (ticket as { id: string }).id });
+    res.status(201).json(ticket);
   }),
 );
 
@@ -58,7 +59,9 @@ router.patch(
   ah(async (req, res) => {
     const parsed = reviewSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
-    res.json(await ticketService.review(req.user!, req.params.id, parsed.data));
+    const ticket = await ticketService.review(req.user!, req.params.id, parsed.data);
+    emit('ticket:updated', { id: req.params.id });
+    res.json(ticket);
   }),
 );
 
@@ -67,14 +70,18 @@ router.patch(
   ah(async (req, res) => {
     const parsed = updateSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
-    res.json(await ticketService.update(req.user!, req.params.id, parsed.data));
+    const ticket = await ticketService.update(req.user!, req.params.id, parsed.data);
+    emit('ticket:updated', { id: req.params.id });
+    res.json(ticket);
   }),
 );
 
 router.post(
   '/:id/comments',
   ah(async (req, res) => {
-    res.status(201).json(await ticketService.addComment(req.user!, req.params.id, req.body));
+    const comment = await ticketService.addComment(req.user!, req.params.id, req.body);
+    emit('comment:added', { ticketId: req.params.id });
+    res.status(201).json(comment);
   }),
 );
 
@@ -82,7 +89,9 @@ router.post(
 router.post(
   '/:id/classify',
   ah(async (req, res) => {
-    res.json(await ticketService.classify(req.user!, req.params.id));
+    const result = await ticketService.classify(req.user!, req.params.id);
+    emit('ticket:updated', { id: req.params.id });
+    res.json(result);
   }),
 );
 

@@ -21,8 +21,7 @@ export default function NewTicket() {
     body.length > 0 && body.trim().length < BODY_MIN
       ? `Description needs at least ${BODY_MIN} characters`
       : '';
-  const canSubmit =
-    title.trim().length >= TITLE_MIN && body.trim().length >= BODY_MIN && !busy;
+  const canSubmit = title.trim().length >= TITLE_MIN && body.trim().length >= BODY_MIN && !busy;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();

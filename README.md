@@ -4,11 +4,12 @@ A friendly little helpdesk app with ticket tracking, team roles, and automatic A
 
 **What it can do:**
 
-- User accounts with three roles: customer, agent, and admin
-- Create, search, filter, and comment on support tickets
+- User accounts with three roles: customer, agent, and admin (plus a team page for role management)
+- Create, search, filter, sort, and comment on support tickets (with Markdown)
 - Automatic triage: every new ticket gets a category, priority, SLA deadline, and a suggested reply
-- A review queue for tickets the AI isn't sure about
-- A full audit log, so you can see everything that happened on a ticket
+- A review queue for tickets the AI isn't sure about — approve/correct with one click
+- Ticket assignment to agents, Kanban board with drag-and-drop, and real-time toast notifications
+- SLA countdown/breach badges, dark mode, and a full audit timeline
 - A dashboard with support stats (agents and admins)
 
 ## Contents
@@ -157,7 +158,9 @@ Perfect for interviews or showing a friend:
 
 ## Ideas for next steps
 
-- Move to Postgres with Docker for production
-- Queue triage jobs with BullMQ + Redis
-- Add a live agent inbox with Socket.io
-- Cover it with tests (Vitest + Supertest)
+- [x] Server-side search, pagination, sorting, review queue
+- [x] Kanban board, real-time notifications (Socket.io), dark mode, Markdown
+- [x] Tests (Vitest), Docker Compose, CI, rate limiting + Helmet
+- [ ] Move to Postgres with Docker for production (`docker compose up --build`; switch `prisma/datasource db provider` to `postgresql`)
+- [ ] Queue triage jobs with BullMQ + Redis
+- [ ] Email notifications for assignments and SLA breaches

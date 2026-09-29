@@ -59,4 +59,29 @@ export const authService = {
       orderBy: { name: 'asc' },
     });
   },
+
+  // Full user list for the admin users page
+  async listAll() {
+    return prisma.user.findMany({
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        createdAt: true,
+        _count: { select: { tickets: true } },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+  },
+
+  async setRole(userId: string, role: 'admin' | 'agent' | 'customer') {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new HttpError(404, 'User not found');
+    return prisma.user.update({
+      where: { id: userId },
+      data: { role },
+      select: { id: true, email: true, name: true, role: true },
+    });
+  },
 };
