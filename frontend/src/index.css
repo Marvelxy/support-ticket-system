@@ -447,3 +447,26 @@ nav a {
   display: grid;
   gap: 6px;
 }
+
+/* --- Review banner --- */
+.review-banner {
+  border-left: 4px solid #7c3aed;
+  display: grid;
+  gap: 12px;
+}
+.review-form {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+.review-form label {
+  display: grid;
+  gap: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.review-form select {
+  width: auto;
+  min-width: 150px;
+}

@@ -13,6 +13,7 @@ interface Ticket {
   needsReview: boolean;
   createdAt: string;
   createdBy?: { name: string; email: string };
+  assignee?: { id: string; name: string; email: string } | null;
 }
 
 interface Stats {
@@ -219,6 +220,9 @@ export default function TicketList() {
                   <span className={`badge badge-priority-${t.priority}`}>{t.priority}</span>
                   <span className="badge badge-muted">{t.category}</span>
                   {t.needsReview && <span className="badge badge-review">needs review</span>}
+                  {t.assignee?.name && (
+                    <span className="badge badge-muted">@{t.assignee.name}</span>
+                  )}
                   <span className="ticket-date" title={new Date(t.createdAt).toLocaleString()}>
                     {timeAgo(t.createdAt)}
                     {t.createdBy?.name ? ` · ${t.createdBy.name}` : ''}

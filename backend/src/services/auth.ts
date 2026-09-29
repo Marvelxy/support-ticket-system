@@ -50,4 +50,13 @@ export const authService = {
       select: { id: true, email: true, name: true, role: true },
     });
   },
+
+  // Assignable users for the ticket assignee picker (agents + admins)
+  async listAssignable() {
+    return prisma.user.findMany({
+      where: { role: { in: ['admin', 'agent'] } },
+      select: { id: true, email: true, name: true, role: true },
+      orderBy: { name: 'asc' },
+    });
+  },
 };
