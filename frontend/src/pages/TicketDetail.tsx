@@ -1,10 +1,30 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { api } from '../lib/api';
 
 const CATEGORIES = ['billing', 'technical', 'account', 'feature_request', 'general'];
 const PRIORITIES = ['low', 'medium', 'high', 'critical'];
+
+function slaDetail(slaDueAt?: string | null) {
+  if (!slaDueAt) return null;
+  const ms = new Date(slaDueAt).getTime() - Date.now();
+  if (ms < 0) return { text: 'SLA breached — reply ASAP', cls: 'sla-breached' };
+  const mins = Math.floor(ms / 60000);
+  if (mins < 60) return { text: `SLA due in ${Math.max(1, mins)}m`, cls: 'sla-urgent' };
+  const h = Math.floor(mins / 60);
+  if (h < 48) return { text: `SLA due in ${h}h`, cls: h < 8 ? 'sla-urgent' : '' };
+  return { text: `SLA due in ${Math.floor(h / 24)}d`, cls: '' };
+}
+
+const AUDIT_ICON: Record<string, string> = {
+  created: '+',
+  classified: '✨',
+  reviewed: '✓',
+  assigned: '👤',
+  updated: '✎',
+};
 
 export default function TicketDetail() {
   const { id } = useParams();
@@ -103,8 +123,8 @@ export default function TicketDetail() {
   if (!t) return <div className="container">Loading...</div>;
   return (
     <div className="container">
-      <Link to="/" className="back-link">
-        ← Back to dashboard
+      <Link to="/tickets" className="back-link">
+        ← Back to tickets
       </Link>
 
       {t.needsReview && (
@@ -158,7 +178,9 @@ export default function TicketDetail() {
 
       <div className="card">
         <h2>{t.title}</h2>
-        <p>{t.body}</p>
+        <div className="markdown-body">
+          <ReactMarkdown>{t.body}</ReactMarkdown>
+        </div>
         <div>
           <span className="badge">{t.status}</span>
           <span className="badge">{t.priority}</span>
@@ -168,6 +190,15 @@ export default function TicketDetail() {
           {typeof t.confidence === 'number' && (
             <span className="badge badge-muted">AI {Math.round(t.confidence * 100)}%</span>
           )}
+          {t.slaDueAt &&
+            (() => {
+              const sla = slaDetail(t.slaDueAt);
+              return sla ? (
+                <span className={`badge ${sla.cls}`} title={new Date(t.slaDueAt).toLocaleString()}>
+                  {sla.text}
+                </span>
+              ) : null;
+            })()}
           {t.summary && (
             <p>
               <em>AI: {t.summary}</em>
@@ -189,10 +220,15 @@ export default function TicketDetail() {
           </button>
         </div>
         {classify.data?.suggestedReply && (
-          <p>
-            <strong>Draft:</strong> {classify.data.suggestedReply}{' '}
-            <em>({classify.data.provider})</em>
-          </p>
+          <div className="draft-box">
+            <p>
+              <strong>Draft:</strong> {classify.data.suggestedReply}{' '}
+              <span className="badge badge-muted">{classify.data.provider}</span>
+            </p>
+            <button className="secondary" onClick={() => setComment(classify.data.suggestedReply)}>
+              Use as reply
+            </button>
+          </div>
         )}
       </div>
       {canReview && (
@@ -226,9 +262,12 @@ export default function TicketDetail() {
       <div className="card">
         <h3>Comments</h3>
         {t.comments?.map((c: any) => (
-          <p key={c.id}>
-            <strong>{c.author?.name}:</strong> {c.body}
-          </p>
+          <div className="comment" key={c.id}>
+            <strong>{c.author?.name}:</strong>{' '}
+            <span className="markdown-body markdown-inline">
+              <ReactMarkdown>{c.body}</ReactMarkdown>
+            </span>
+          </div>
         ))}
         <div className="row">
           <input
@@ -241,13 +280,25 @@ export default function TicketDetail() {
       </div>
       <div className="card">
         <h3>Audit</h3>
-        {t.audits?.map((a: any) => (
-          <p key={a.id}>
-            <small>
-              {a.actor} — {a.action} {a.detail || ''}
-            </small>
-          </p>
-        ))}
+        <div className="timeline">
+          {t.audits?.map((a: any) => (
+            <div className="timeline-item" key={a.id}>
+              <span className="timeline-icon" aria-hidden>
+                {AUDIT_ICON[a.action] ?? '•'}
+              </span>
+              <div>
+                <div className="timeline-action">
+                  <strong>{a.actor}</strong> — {a.action}
+                  <span className="timeline-time" title={new Date(a.createdAt).toLocaleString()}>
+                    {' '}
+                    · {new Date(a.createdAt).toLocaleString()}
+                  </span>
+                </div>
+                {a.detail && <small className="muted">{a.detail}</small>}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

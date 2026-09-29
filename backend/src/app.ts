@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import authRoutes from './routes/auth.js';
 import ticketRoutes from './routes/tickets.js';
 import dashboardRoutes from './routes/dashboard.js';
@@ -7,8 +9,12 @@ import { HttpError } from './services/errors.js';
 
 export function createApp() {
   const app = express();
+  app.use(helmet());
   app.use(cors());
   app.use(express.json({ limit: '1mb' }));
+  // Gentle rate limiting on auth to slow brute-force logins
+  app.use('/api/auth/login', rateLimit({ windowMs: 60_000, max: 30 }));
+  app.use('/api/auth/register', rateLimit({ windowMs: 60_000, max: 30 }));
   app.get('/health', (_req, res) => res.json({ ok: true, ai: process.env.AI_PROVIDER || 'rule' }));
   app.use('/api/auth', authRoutes);
   app.use('/api/tickets', ticketRoutes);

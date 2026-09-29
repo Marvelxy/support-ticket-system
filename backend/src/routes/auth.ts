@@ -47,4 +47,27 @@ router.get(
   }),
 );
 
+// Full user list + role management (admin only)
+router.get(
+  '/admin/users',
+  auth,
+  requireRole('admin'),
+  ah(async (_req, res) => {
+    res.json(await authService.listAll());
+  }),
+);
+
+router.patch(
+  '/admin/users/:id',
+  auth,
+  requireRole('admin'),
+  ah(async (req, res) => {
+    const parsed = z.object({ role: z.enum(['admin', 'agent', 'customer']) }).safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+    if (req.user!.id === req.params.id && parsed.data.role !== 'admin')
+      return res.status(400).json({ error: 'You cannot demote yourself' });
+    res.json(await authService.setRole(req.params.id, parsed.data.role));
+  }),
+);
+
 export default router;

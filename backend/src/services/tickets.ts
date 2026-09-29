@@ -14,6 +14,8 @@ export interface TicketListQuery {
   page?: string;
   limit?: string;
   mine?: string;
+  needsReview?: string;
+  sort?: string;
 }
 
 export interface CreateTicketInput {
@@ -69,21 +71,47 @@ async function applyClassification(ticketId: string, r: ClassifyResult, detail: 
 export const ticketService = {
   // List with search/filter/pagination - what recruiters check
   async list(user: AuthUser, query: TicketListQuery) {
-    const { q, status, priority, category, page = '1', limit = '20', mine } = query;
+    const {
+      q,
+      status,
+      priority,
+      category,
+      page = '1',
+      limit = '20',
+      mine,
+      needsReview,
+      sort = 'newest',
+    } = query;
     const where: Record<string, unknown> = {};
     if (status) where.status = status;
     if (priority) where.priority = priority;
     if (category) where.category = category;
+    if (needsReview === 'true') where.needsReview = true;
     if (mine === 'true') where.createdById = user.id;
     // Customers only see own tickets; agents/admin see all
     if (user.role === 'customer') where.createdById = user.id;
+    if (q?.trim()) {
+      const needle = q.trim();
+      (where as Record<string, unknown>).OR = [
+        { title: { contains: needle } },
+        { body: { contains: needle } },
+      ];
+    }
+    const orderBy =
+      sort === 'oldest'
+        ? { createdAt: 'asc' as const }
+        : sort === 'priority'
+          ? [{ priority: 'asc' as const }, { createdAt: 'desc' as const }]
+          : sort === 'sla'
+            ? { slaDueAt: 'asc' as const }
+            : { createdAt: 'desc' as const };
     const p = Math.max(1, parseInt(page, 10) || 1);
     const l = Math.min(100, parseInt(limit, 10) || 20);
     const [total, tickets] = await Promise.all([
       prisma.ticket.count({ where: where as never }),
       prisma.ticket.findMany({
         where: where as never,
-        orderBy: { createdAt: 'desc' },
+        orderBy: orderBy as never,
         skip: (p - 1) * l,
         take: l,
         include: {

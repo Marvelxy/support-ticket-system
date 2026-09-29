@@ -21,8 +21,7 @@ export default function NewTicket() {
     body.length > 0 && body.trim().length < BODY_MIN
       ? `Description needs at least ${BODY_MIN} characters`
       : '';
-  const canSubmit =
-    title.trim().length >= TITLE_MIN && body.trim().length >= BODY_MIN && !busy;
+  const canSubmit = title.trim().length >= TITLE_MIN && body.trim().length >= BODY_MIN && !busy;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -44,8 +43,8 @@ export default function NewTicket() {
 
   return (
     <div className="container new-ticket">
-      <Link to="/" className="back-link">
-        ← Back to dashboard
+      <Link to="/tickets" className="back-link">
+        ← Back to tickets
       </Link>
 
       <header className="dash-header">
@@ -95,7 +94,7 @@ export default function NewTicket() {
           )}
 
           <div className="form-actions">
-            <Link to="/" className="btn-ghost">
+            <Link to="/tickets" className="btn-ghost">
               Cancel
             </Link>
             <button type="submit" disabled={!canSubmit} className="btn-submit">
