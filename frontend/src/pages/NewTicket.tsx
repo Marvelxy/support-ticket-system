@@ -43,8 +43,8 @@ export default function NewTicket() {
 
   return (
     <div className="container new-ticket">
-      <Link to="/" className="back-link">
-        ← Back to dashboard
+      <Link to="/tickets" className="back-link">
+        ← Back to tickets
       </Link>
 
       <header className="dash-header">
@@ -94,7 +94,7 @@ export default function NewTicket() {
           )}
 
           <div className="form-actions">
-            <Link to="/" className="btn-ghost">
+            <Link to="/tickets" className="btn-ghost">
               Cancel
             </Link>
             <button type="submit" disabled={!canSubmit} className="btn-submit">

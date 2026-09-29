@@ -123,8 +123,8 @@ export default function TicketDetail() {
   if (!t) return <div className="container">Loading...</div>;
   return (
     <div className="container">
-      <Link to="/" className="back-link">
-        ← Back to dashboard
+      <Link to="/tickets" className="back-link">
+        ← Back to tickets
       </Link>
 
       {t.needsReview && (

@@ -102,13 +102,13 @@ function Nav({ theme, onToggleTheme }: { theme: string; onToggleTheme: () => voi
               end
               className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
             >
-              Tickets
+              Board
             </NavLink>
             <NavLink
-              to="/board"
+              to="/tickets"
               className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
             >
-              Board
+              Tickets
             </NavLink>
             <NavLink
               to="/new"
@@ -193,6 +193,14 @@ export default function App() {
               path="/"
               element={
                 <AuthedRoute>
+                  <Board />
+                </AuthedRoute>
+              }
+            />
+            <Route
+              path="/tickets"
+              element={
+                <AuthedRoute>
                   <TicketList />
                 </AuthedRoute>
               }
@@ -206,14 +214,6 @@ export default function App() {
               }
             />
             <Route
-              path="/board"
-              element={
-                <AuthedRoute>
-                  <Board />
-                </AuthedRoute>
-              }
-            />
-            <Route
               path="/users"
               element={
                 <AuthedRoute>
@@ -221,6 +221,7 @@ export default function App() {
                 </AuthedRoute>
               }
             />
+            <Route path="/board" element={<Navigate to="/" replace />} />
             <Route
               path="/tickets/:id"
               element={

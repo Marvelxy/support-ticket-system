@@ -134,8 +134,8 @@ export default function TicketList() {
           </p>
         </div>
         <div className="row">
-          <Link to="/board" className="btn-ghost">
-            Kanban
+          <Link to="/" className="btn-ghost">
+            Board
           </Link>
           <Link to="/new" className="btn-primary">
             + New ticket

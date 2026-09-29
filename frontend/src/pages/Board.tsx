@@ -48,13 +48,18 @@ export default function Board() {
 
   return (
     <div className="container board-page">
-      <Link to="/" className="back-link">
-        ← Back to dashboard
-      </Link>
       <header className="dash-header">
         <div>
-          <h1>Kanban board</h1>
+          <h1>Board</h1>
           <p className="muted">Drag tickets between columns to change status.</p>
+        </div>
+        <div className="row">
+          <Link to="/tickets" className="btn-ghost">
+            List view
+          </Link>
+          <Link to="/new" className="btn-primary">
+            + New ticket
+          </Link>
         </div>
       </header>
       {error && (

@@ -57,7 +57,7 @@ export default function Login() {
         </p>
         <p>
           Seed users: admin@demo.io / agent@demo.io / customer@demo.io — password: password123.{' '}
-          <Link to="/">Tickets</Link>
+          <Link to="/tickets">Tickets</Link>
         </p>
       </div>
     </div>
