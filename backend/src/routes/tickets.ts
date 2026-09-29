@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { auth } from '../middleware/auth.js';
+import { auth, requireRole } from '../middleware/auth.js';
 import { ah } from '../middleware/asyncHandler.js';
 import { ticketService } from '../services/tickets.js';
 import type { TicketListQuery } from '../services/tickets.js';
@@ -12,6 +12,19 @@ const createSchema = z.object({
   title: z.string().min(3),
   body: z.string().min(5),
   assigneeId: z.string().optional(),
+});
+
+const reviewSchema = z.object({
+  category: z
+    .enum(['billing', 'technical', 'account', 'feature_request', 'general'])
+    .optional(),
+  priority: z.enum(['critical', 'high', 'medium', 'low']).optional(),
+});
+
+const updateSchema = z.object({
+  status: z.enum(['open', 'pending', 'resolved', 'closed']).optional(),
+  priority: z.enum(['critical', 'high', 'medium', 'low']).optional(),
+  assigneeId: z.string().nullable().optional(),
 });
 
 // List with search/filter/pagination - what recruiters check
@@ -38,10 +51,23 @@ router.get(
   }),
 );
 
+// Human review: correct AI triage and clear needsReview (agent/admin only)
+router.patch(
+  '/:id/review',
+  requireRole('admin', 'agent'),
+  ah(async (req, res) => {
+    const parsed = reviewSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+    res.json(await ticketService.review(req.user!, req.params.id, parsed.data));
+  }),
+);
+
 router.patch(
   '/:id',
   ah(async (req, res) => {
-    res.json(await ticketService.update(req.user!, req.params.id, req.body));
+    const parsed = updateSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+    res.json(await ticketService.update(req.user!, req.params.id, parsed.data));
   }),
 );
 

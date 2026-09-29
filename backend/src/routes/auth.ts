@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { auth } from '../middleware/auth.js';
+import { auth, requireRole } from '../middleware/auth.js';
 import { ah } from '../middleware/asyncHandler.js';
 import { authService } from '../services/auth.js';
 
@@ -34,6 +34,16 @@ router.get(
   auth,
   ah(async (req, res) => {
     res.json(await authService.me(req.user!.id));
+  }),
+);
+
+// Assignable users for the ticket assignee picker (agent/admin only)
+router.get(
+  '/users',
+  auth,
+  requireRole('admin', 'agent'),
+  ah(async (_req, res) => {
+    res.json(await authService.listAssignable());
   }),
 );
 

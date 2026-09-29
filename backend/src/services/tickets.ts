@@ -25,8 +25,16 @@ export interface CreateTicketInput {
 export interface UpdateTicketInput {
   status?: string;
   priority?: string;
-  assigneeId?: string;
+  assigneeId?: string | null;
 }
+
+export interface ReviewTicketInput {
+  category?: string;
+  priority?: string;
+}
+
+const VALID_CATEGORIES = ['billing', 'technical', 'account', 'feature_request', 'general'];
+const VALID_PRIORITIES = ['critical', 'high', 'medium', 'low'];
 
 export interface AddCommentInput {
   body: string;
@@ -78,7 +86,10 @@ export const ticketService = {
         orderBy: { createdAt: 'desc' },
         skip: (p - 1) * l,
         take: l,
-        include: { createdBy: { select: { name: true, email: true } } },
+        include: {
+          createdBy: { select: { name: true, email: true } },
+          assignee: { select: { id: true, name: true, email: true } },
+        },
       }),
     ]);
     return { total, page: p, limit: l, tickets };
@@ -107,6 +118,8 @@ export const ticketService = {
     const ticket = await prisma.ticket.findUnique({
       where: { id },
       include: {
+        assignee: { select: { id: true, name: true, email: true } },
+        createdBy: { select: { id: true, name: true, email: true } },
         comments: {
           include: { author: { select: { name: true } } },
           orderBy: { createdAt: 'asc' },
@@ -124,6 +137,16 @@ export const ticketService = {
     if (!ticket) throw new HttpError(404, 'Not found');
     assertCanAccess(user, ticket);
     const { status, priority, assigneeId } = input;
+    if (status !== undefined && !['open', 'pending', 'resolved', 'closed'].includes(status))
+      throw new HttpError(400, `Invalid status: ${status}`);
+    if (priority !== undefined && !VALID_PRIORITIES.includes(priority))
+      throw new HttpError(400, `Invalid priority: ${priority}`);
+    if (assigneeId) {
+      const assignee = await prisma.user.findUnique({ where: { id: assigneeId } });
+      if (!assignee) throw new HttpError(404, 'Assignee not found');
+      if (!['admin', 'agent'].includes(assignee.role))
+        throw new HttpError(400, 'Assignee must be an agent or admin');
+    }
     const updated = await prisma.ticket.update({
       where: { id },
       data: {
@@ -136,8 +159,8 @@ export const ticketService = {
       data: {
         ticketId: updated.id,
         actor: user.email,
-        action: 'updated',
-        detail: JSON.stringify({ status, priority }),
+        action: assigneeId !== undefined ? 'assigned' : 'updated',
+        detail: JSON.stringify({ status, priority, assigneeId: updated.assigneeId }),
       },
     });
     return updated;
@@ -165,5 +188,34 @@ export const ticketService = {
     const r = await getAiProvider().classify(ticket.title, ticket.body);
     const updated = await applyClassification(ticket.id, r, r.summary);
     return { ticket: updated, suggestedReply: r.suggestedReply, provider: r.provider };
+  },
+
+  // Human review: correct AI triage and clear the needsReview flag
+  async review(user: AuthUser, id: string, input: ReviewTicketInput) {
+    const ticket = await prisma.ticket.findUnique({ where: { id } });
+    if (!ticket) throw new HttpError(404, 'Not found');
+    assertCanAccess(user, ticket);
+    const { category, priority } = input;
+    if (category !== undefined && !VALID_CATEGORIES.includes(category))
+      throw new HttpError(400, `Invalid category: ${category}`);
+    if (priority !== undefined && !VALID_PRIORITIES.includes(priority))
+      throw new HttpError(400, `Invalid priority: ${priority}`);
+    const updated = await prisma.ticket.update({
+      where: { id },
+      data: {
+        ...(category !== undefined && { category }),
+        ...(priority !== undefined && { priority, slaDueAt: slaDueAt(priority) }),
+        needsReview: false,
+      },
+    });
+    await prisma.auditLog.create({
+      data: {
+        ticketId: updated.id,
+        actor: user.email,
+        action: 'reviewed',
+        detail: JSON.stringify({ category: updated.category, priority: updated.priority }),
+      },
+    });
+    return updated;
   },
 };

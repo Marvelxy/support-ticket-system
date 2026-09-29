@@ -1,17 +1,54 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useParams } from 'react-router-dom';
-import { useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
+
+const CATEGORIES = ['billing', 'technical', 'account', 'feature_request', 'general'];
+const PRIORITIES = ['low', 'medium', 'high', 'critical'];
 
 export default function TicketDetail() {
   const { id } = useParams();
   const qc = useQueryClient();
   const [comment, setComment] = useState('');
+  const [category, setCategory] = useState('');
+  const [priority, setPriority] = useState('');
+  const [reviewError, setReviewError] = useState('');
+  const [assigneeId, setAssigneeId] = useState('');
+  const [assignError, setAssignError] = useState('');
+
   const { data: t } = useQuery({
     queryKey: ['ticket', id],
     queryFn: () => api<any>(`/api/tickets/${id}`),
     enabled: !!id,
   });
+
+  // Current user role decides whether review controls are shown.
+  // Customers see a "waiting for review" note instead (backend also enforces agent/admin).
+  const { data: me } = useQuery({
+    queryKey: ['me'],
+    queryFn: () => api<{ role: string }>('/api/auth/me'),
+    retry: false,
+    staleTime: 60_000,
+  });
+  const canReview = me?.role === 'admin' || me?.role === 'agent';
+
+  // Assignable agents for the picker (agent/admin only; 403 for customers).
+  const { data: users } = useQuery({
+    queryKey: ['assignable-users'],
+    queryFn: () => api<{ id: string; name: string; email: string }[]>('/api/auth/users'),
+    retry: false,
+    staleTime: 60_000,
+    enabled: canReview,
+  });
+
+  useEffect(() => {
+    if (t) {
+      setCategory(t.category ?? '');
+      setPriority(t.priority ?? '');
+      setAssigneeId(t.assignee?.id ?? '');
+    }
+  }, [t?.id, t?.category, t?.priority, t?.assignee?.id]);
+
   const classify = useMutation({
     mutationFn: () => api<any>(`/api/tickets/${id}/classify`, { method: 'POST' }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['ticket', id] }),
@@ -30,12 +67,95 @@ export default function TicketDetail() {
   const setStatus = useMutation({
     mutationFn: (status: string) =>
       api(`/api/tickets/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['ticket', id] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['ticket', id] });
+      qc.invalidateQueries({ queryKey: ['tickets'] });
+    },
+  });
+  const assign = useMutation({
+    mutationFn: () =>
+      api(`/api/tickets/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ assigneeId: assigneeId || null }),
+      }),
+    onSuccess: () => {
+      setAssignError('');
+      qc.invalidateQueries({ queryKey: ['ticket', id] });
+      qc.invalidateQueries({ queryKey: ['tickets'] });
+    },
+    onError: (e) => setAssignError((e as Error).message || 'Assignment failed'),
+  });
+  const review = useMutation({
+    mutationFn: () =>
+      api(`/api/tickets/${id}/review`, {
+        method: 'PATCH',
+        body: JSON.stringify({ category, priority }),
+      }),
+    onSuccess: () => {
+      setReviewError('');
+      qc.invalidateQueries({ queryKey: ['ticket', id] });
+      qc.invalidateQueries({ queryKey: ['tickets'] });
+      qc.invalidateQueries({ queryKey: ['dashboard-stats'] });
+    },
+    onError: (e) => setReviewError((e as Error).message || 'Review failed'),
   });
 
   if (!t) return <div className="container">Loading...</div>;
   return (
     <div className="container">
+      <Link to="/" className="back-link">
+        ← Back to dashboard
+      </Link>
+
+      {t.needsReview && (
+        <div className="card review-banner" role="alert">
+          <div>
+            <strong>✎ Needs review</strong>
+            <p className="muted">
+              AI confidence
+              {typeof t.confidence === 'number' ? ` ${Math.round(t.confidence * 100)}%` : ''} is
+              below the 70% threshold. Please verify the category and priority.
+            </p>
+          </div>
+          {canReview ? (
+            <form
+              className="review-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                review.mutate();
+              }}
+            >
+              <label>
+                Category
+                <select value={category} onChange={(e) => setCategory(e.target.value)}>
+                  {CATEGORIES.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Priority
+                <select value={priority} onChange={(e) => setPriority(e.target.value)}>
+                  {PRIORITIES.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button type="submit" disabled={review.isPending}>
+                {review.isPending ? 'Approving…' : 'Approve triage'}
+              </button>
+              {reviewError && <span className="field-error">{reviewError}</span>}
+            </form>
+          ) : (
+            <p className="muted">An agent will review the AI categorization shortly.</p>
+          )}
+        </div>
+      )}
+
       <div className="card">
         <h2>{t.title}</h2>
         <p>{t.body}</p>
@@ -43,6 +163,11 @@ export default function TicketDetail() {
           <span className="badge">{t.status}</span>
           <span className="badge">{t.priority}</span>
           <span className="badge">{t.category}</span>
+          {t.assignee?.name && <span className="badge badge-muted">@{t.assignee.name}</span>}
+          {t.needsReview && <span className="badge badge-review">needs review</span>}
+          {typeof t.confidence === 'number' && (
+            <span className="badge badge-muted">AI {Math.round(t.confidence * 100)}%</span>
+          )}
           {t.summary && (
             <p>
               <em>AI: {t.summary}</em>
@@ -70,6 +195,34 @@ export default function TicketDetail() {
           </p>
         )}
       </div>
+      {canReview && (
+        <div className="card">
+          <h3>Assignee</h3>
+          <form
+            className="review-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              assign.mutate();
+            }}
+          >
+            <label>
+              Assigned to
+              <select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)}>
+                <option value="">Unassigned</option>
+                {(users ?? []).map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name} ({u.email})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button type="submit" disabled={assign.isPending}>
+              {assign.isPending ? 'Saving…' : 'Save'}
+            </button>
+            {assignError && <span className="field-error">{assignError}</span>}
+          </form>
+        </div>
+      )}
       <div className="card">
         <h3>Comments</h3>
         {t.comments?.map((c: any) => (
